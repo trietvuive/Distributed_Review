@@ -1,0 +1,10 @@
+2pc
+3pc
+vmware ft
+mapreduce: wc, kmeans, pagerank
+gfs
+cristian, berkeley
+CAP theorem
+DNS
+RPC
+amdaahl's law

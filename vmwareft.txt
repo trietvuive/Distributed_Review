@@ -1,0 +1,38 @@
+_Input that primary VM receives comes to backup VM via network connection called logging channel
+_For non-deterministic operations, log enough info to reproduce the same operation
+_For non-deterministic events (timer, IO), also record the exact instruction when event occured 
+	_When replay, the event is delivered at same point in instruction stream
+_Output requirements: If backup VM take over, execution will be consistent with all outputs that primary VM has sent to external world
+	_This means primary VM cannot send output until backup VM finishes replaying up until the output operation
+	_The primary VM doesn't have to stop, it can keep going, but it cannot send output until backup ACKs finish replaying
+	_Enforced with a special log entry at each output operation
+	_Cannot guarantee that all outputs are sent exactly once (since backup cannot know if primary fail before or after sending output)
+
+Responding to failure
+_If primary fails, backup must replay all log entries before "going live" (replacing primary VM)
+_Detect failures by UDP heartbeating (timeout of few seconds)
+_To prevent split-brain (backup going live while primary running):
+	_Execute atomic test-and-set on the shared storage
+	_If operation succeed, VM goes live.
+	_If fail, commit suicide
+	_If cannot access storage, wait till you can
+
+Starting & Restarting 
+_To start a backup in the same state as primary VM, use vSphere to clone primary while having primary go into logging mode - start logging to the backup
+_Primary VM informs clustering service when backup fails to get a new backup
+
+Backlog
+_If backup VM encounters empty log buffer when need to read next log entry, it will stop executing until new log
+_If primary VM encounters full log buffer when need to write, it will similarly stops
+_Backup might lag behind if not get enough CPU/memory
+_Large buffers = larger execution lag = if primary fails, backup needs more time to fully consume everything and go live
+_VMWare FT slows down primary by tells scheduler to reduce primary's CPU
+
+Explicit power-off
+_If primary gets explicit powered-off, backup needs to stop instead of go live
+_Special control entries on logging channel to tell backup to stop
+_Backup and primary cannot be on the same server - no fault tolerance
+_VMotion: migration of workload from one server to another (telling VM to switch to different workload)
+_VMotion of primary VM tells primary to finish all outstanding disk operation, deliver it to backup and switch
+_VMotion of backup VM is trickier - backup must replay I/O at the same execution point as primary
+	_Backup requests primary to finish all outstanding I/O operation, finish, then switch
