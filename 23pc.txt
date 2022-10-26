@@ -1,0 +1,63 @@
+2pc:
+
+Request phase:
+1. 2pc coordinator sends prepare request to all participants
+2. Participants reply with a vote (commit or abort)
+
+Commit phase:
+1. If coordinator receives a majority of commit votes, it sends commit message to all participants
+2. Participants commit their changes
+3. Participant ACKs
+4. Coordinator completes
+
+Abort phase:
+1. If any participant votes abort or timeout, coordinator sends abort message to all participants
+2. Participants abort their changes
+3. Participant ACKs
+4. Coordinator completes
+
+Problems - blocking failure:
+1. Coordinator, A, B, C
+2. Coordinator sends prepare to A, B, C
+3. A, B, C reply with commit
+4. Coordinator sends commit to A. A commits
+5. Coordinator and A both dies
+6. B, C is stuck since they don't know if A committed or not
+
+2pc is safe, not live
+
+3pc
+Request phase:
+1. 2pc coordinator sends prepare request to all participants
+2. Participants reply with a vote (commit or abort)
+
+Precommit phase:
+1. If coordinator receives a majority of commit votes, it sends preCommit message to all participants
+2. Participants prepare to commit
+
+DoCommit phase:
+1. If coordinator receives a majority of precommit votes, it sends doCommit message to all participants
+2. Participants commit their changes
+
+If Coordinator and A crashes, B/C/D can still reach a safe decision
+1. If one of them received precommit, they can all commit
+	A will recover, reads from B/C/D and commits
+2. If none of them received precommit, they can all abort
+	This is safe, since A couldn't have received doCommit so A couldn't have committed
+
+Problems:
+For 3pc, timeout cause abort unless received preCommit
+If waiting for doCommit timeout results in abort, a node can get partitioned and decide to abort while everyone else doCommits
+
+Scenario A:
+1. Coordinator, A/B/C/D
+2. A receives preCommit
+3. A gets partitioned from B/C/D, coordinator partitioned or dies
+4. B/C/D aborts upon timeout, A commits upon timeout
+
+3pc doomed for network partition
+3pc trades safety for liveness, 2pc trade liveness for safety
+A protocol that's both safe and live is impossible (FLP' 85)
+
+3pc can guarantee both safety and liveness if you know upper bound of message delays 
+	_Possible to infer if something has crashed with certainty
