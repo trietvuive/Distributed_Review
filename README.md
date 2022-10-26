@@ -11,3 +11,5 @@ Paxos: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 VMWareFT: https://www.cs.princeton.edu/courses/archive/fall16/cos418/papers/scales-vm.pdf
 
 RPC: https://en.wikipedia.org/wiki/Remote_procedure_call
+
+Time: https://cse.buffalo.edu/~stevko/courses/cse486/spring14/lectures/06-time.pdf
