@@ -1,4 +1,4 @@
-2pc:
+2pc
 
 Request phase:
 1. 2pc coordinator sends prepare request to all participants
