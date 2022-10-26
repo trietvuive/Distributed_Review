@@ -1,0 +1,20 @@
+Defintion:
+Clock skew: difference between time on two clocks
+Clock drift: difference between clock rates on two clock (e.g. one clock is running faster than the other)
+
+Cristian:
+1) Client sends request for clock time to server at T0.
+2) Server responds with clock time T_server, client receives at T1.
+3) Client calculates the synchronized clock time as:
+
+T_client = T_server + (T1 - T0)/2
+
+T1 - T0 = combined time taken by the network to send the request and receive the response = round trip time (RTT)
+
+To improve, take multiple readings and use the minimum RTT
+
+Berkeley:
+1) Node chosen as master node. Decide through consensus
+2) Master pings everyone else to get clock time
+3) Master calculates average time difference between all times received and master's own sysclock
+4) Master adds this time difference to its own sysclock and broadcast to network
