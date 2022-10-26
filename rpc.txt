@@ -1,0 +1,22 @@
+RPC: Execute a subrountine on a different address space (e.g. a different computer), coded as a local procedure call
+
+RPC caller sends request to RPC server. If async call, caller continues. If sync call, caller waits for response.
+
+Defintion:
+Stub: Translate local procedure call into a remote procedure call
+Marshalling: Translate parameters into a form that can be sent over the network
+
+Steps:
+1. Client calls client stub with normal procedure call
+2. Stub marshals parameter, make syscall to send message
+3. Client's OS sends message to server's OS
+4. Server's OS sends message to server stub
+5. Server stub unmarshals parameter, calls server procedure
+6. Server procedure returns result to server stub
+
+Issues: 
+
+1. How does the client know who to call, and where is the service resides?
+Dynamic binding: Client stub uses a name service to find the address of the server stub
+Server exports an interface, registers it with the name service
+Client imports the interface before communicate
