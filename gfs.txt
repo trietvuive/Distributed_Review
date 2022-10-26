@@ -1,0 +1,78 @@
+Design choice:
+_Support multi-GB file
+_Support large streaming reads & small random reads
+_Support large sequential writes
+_Most files are mutated by appending rather than overwriting
+_High bandwidth > low latency
+
+
+Read: 
+Client sends request of filename, chunk_index
+Master replies with chunk handles and location of replicas. Client will cache this, expire when handle expires.
+Client sends request to closest replica for chunk_handle, byte_range
+
+64 MB chunk size
+Why? 
+_Reduce client's need to interact with master
+_Reduce network overhead by using persistent TCP connection to chunkserver
+_Reduce size of metadata table
+
+Larger chunksize might end up with chunkservers becoming hot spots
+
+Metadata:
+File -> chunk handles mapping (persistent)
+
+Master doesn't keep persistent record of which chunkservers has which chunk. It polls chunkservers at startup
+Operation log contains historical record of critical metadata changes. Very important, must be persistent and cannot lose
+
+Guarantees:
+File creation is atomic, handled with locking by master
+If mutation succeed without interference, region is defined: all clients see what mutation wrote
+If concurrent mutation suceed, region is undefined but consistent: All clients see the same data, but it's a mixed of multiple mutations
+If a mutation failed region is inconsistent: different clients may see different data at different times
+
+Record append cause data to appended atomically at least once at an offset GFS chooses (not necessarily end of file).
+	GFS may insert padding or duplicate records in between. Reader discard padding with checksums
+GFS guarantee mutated file region to be defined after sequence of successful mutations by:
+	Apply mutations in the same order on all replicas
+	Use chunk version number to detect stale replicas
+
+Client can read stale replica before refresh, but will refresh when cache is purged
+Since files are append-only, stale replica returns premature end rather than outdated data
+
+GFS identifies failed chunkserver by handshake, data corruption by checksum
+Chunk is lost irreversibly if all replicas lost before GFS can react (within minutes). Data is unavailable, not corrupted
+
+Lease and mutation order
+Master grants chunk lease to primary replica.
+Primary picks serial order for all mutations to chunk. All replicas follow this serial order
+Lease 60 seconds timeout. Primary try to renew lease. Master can revoke lease at any time, safely grant new lease after old lease expires
+
+Write process:
+1. Client ask master for Primary, Secondary
+2. If no lease, master grant one to a replica
+3. Master replies with Primary, Secondary
+
+4. Client pushes data to all replicas in any order. Chunkserver stored in cache and ACKs
+5. Client receives all ACKs, send write request to primary
+6. Primary assign consecutive serial number to all mutations, applies mutations to its local state in serial order
+7. Primary forwards write request to all secondary. Secondary applies mutation in same serial order assigned by primary
+8. Primary replies with success or error. If failed, modified region is in inconsistent state. Client must retry 4-8, then try from the beginning
+
+For record append, primary checks if appending record to current chunk exceed maximum size (64 MB).
+	If yes, pads to maximum size, tell secondary to do the same, then tell clients to do it at the next chunk
+	Record append <= 1/4 of 64 MB to reduce fragmentation
+	If no, append data to replica, tell secondary to do the same, then respond to clients
+
+GFS doesn't guarantee all replicas are identical, only guarantees that data is written at least once atomically (either all succeed or all fail)
+
+Snapshot
+1. Master receives snapshot request, revoke outstanding lease on chunks involved in snapshot
+2. Create snapshot of the directory tree. Snapshot point to same chunks as source
+
+3. Client want to write to chunk C, master noticees >1 reference for chunk C.
+4. Master creates new chunk C' and copy data from C to C', ask chunkserver that has C to do the same
+5. Proceed normally with C'
+
+
+
