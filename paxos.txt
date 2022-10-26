@@ -20,7 +20,7 @@ Phase 2B: Acceptor receiving accept message (n,v)
 Only accept if n >= promise number. Register v as accepted value, send accepted to Proposer and Learner
 Else, ignore message
 
-Consensus is only achieved when majority of acceptors accept the same identifier number (not value)
+Consensus is only achieved when majority of acceptors accept the same identifier number (not value). See Case D.
 
 Case A: A proposer fails while sending Accept message (or packet dropped), so only 1 Acceptor receives. New proposer comes in and got "elected" (value is chosen)
 Client  Proposer        Acceptor     Learner
